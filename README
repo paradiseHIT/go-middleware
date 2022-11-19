@@ -1,0 +1,4 @@
+# middleeare for go server
+
+# compile
+go build middleware.go
