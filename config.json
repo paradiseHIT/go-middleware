@@ -1,4 +1,5 @@
 {
-    "requestURL": "http://localhost:8080/test",
-    "debug":"false"
+    "requestURL": "http://localhost:9090/test",
+    "debug":"false",
+    "DBAddress": "root:123456@tcp(127.0.0.1:3306)/middleware?charset=utf8mb4&parseTime=True&loc=Local"
 }
