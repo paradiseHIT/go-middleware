@@ -7,18 +7,18 @@
 package main
 
 import (
+  "flag"
   "time"
   "fmt"
   "bytes"
   "log"
-  "sync"
   "io/ioutil"
   "encoding/json"
   "net/http"
-  "container/list"
   "github.com/google/uuid"
   "github.com/spf13/viper"
   "github.com/labstack/echo/v4"
+  "github.com/labstack/echo/v4/middleware"
   "gorm.io/gorm/logger"
   "gorm.io/gorm"
   "gorm.io/driver/mysql"
@@ -26,60 +26,6 @@ import (
 var q *Queue
 var cnt = 0
 var db *gorm.DB
-
-const (
-  JOB_STATE_INIT    = 0
-  JOB_STATE_PROCESSING    = 1
-  JOB_STATE_SUCCESS = 2
-  JOB_STATE_FAILED  = 3
-
-  PARAMETER_ERROR = "PARAMETER_ERROR"
-  INTERNAL_ERROR = "INTERNAL_ERROR"
-  POST_REQUEST_ERROR = "POST_REQUEST_ERROR"
-  INTERNAL_RESPONSE_ERROR = "INTERNAL_RESPONSE_ERROR"
-  CODE_OK = "OK"
-)
-
-type AsyncJob struct {
-  JobId uint32 `gorm:"primary_key" json:"id,omitempty"`
-  RequestId string `gorm:"Column:request_id" json:"request_id,omitempty"`
-  State uint32 `gorm:"Column:state" json:"state"`
-  CreateTime time.Time `gorm:"Column:create_time" json:"create_time"`
-  UpdateTime time.Time `gorm:"Column:update_time" json:"update_time"`
-  Debug string `json:"debug,omitempty" query:"debug" form:"debug" xml:"debug" default:"false"`
-  Prompt string `json:"prompt" query:"prompt" form:"prompt" xml:"prompt"`
-  Result string `gorm:"type:text,omitempty"`
-}
-
-type Request struct {
-  JobId uint32 `json:"job_id" query:"job_id" form:"job_id" xml:"job_id"`
-  Debug string `json:"debug,omitempty" query:"debug" form:"debug" xml:"debug" default:"false"`
-  Prompt string `json:"prompt" query:"prompt" form:"prompt" xml:"prompt"`
-}
-
-type Result struct {
-  Ret string `json:"ret,omitempty"`
-}
-
-type Response struct {
-  RequestId string                 `json:"request_id,omitempty"`
-  Code      string                 `json:"code"`
-  Message   string                 `json:"message,omitempty"`
-  Data      map[string]interface{} `json:"data,omitempty"`
-}
-func (r Response) ToString() string {
-  str, _ := json.Marshal(r)
-  return string(str)
-}
-
-func MakeResponse(requestId, code, message string) *Response {
-  response := Response{
-    RequestId: requestId,
-    Code:      code,
-    Message:   message,
-  }
-  return &response
-}
 
 func Process(c echo.Context) error {
   cnt += 1
@@ -184,13 +130,12 @@ func GenerateReqId() string {
   return uuid.New().String()
 }
 
-func InitConfig(path string, filename string) {
-  viper.AddConfigPath(".")
-  viper.SetConfigName("config")
+func InitConfig(filename string) {
+  viper.SetConfigFile(filename)
   if err := viper.ReadInConfig(); err != nil {
     if _, ok := err.(viper.ConfigFileNotFoundError); ok {
       // Config file not found; ignore error if desired
-      panic("config file not found")
+      panic("config file not found [" + filename + "]")
     } else {
       // Config file was found but another error was produced
       log.Fatal("Fatal error config file: ")
@@ -242,34 +187,6 @@ func Query(c echo.Context) error {
   return c.JSON(http.StatusOK, response)
 }
 
-//这个是queue的数据结构，由于contain/list是线程不安全的，需要加锁处理
-type Queue struct {
-	List list.List
-	Lock sync.Mutex
-}
-
-//入
-func (this *Queue) Push(a interface{}) {
-  defer this.Lock.Unlock()
-  this.Lock.Lock()
-  this.List.PushFront(a)
-}
-//出
-func (this *Queue) Pop() interface{} {
-  defer this.Lock.Unlock()
-  this.Lock.Lock()
-  e := this.List.Back()
-  if e != nil {
-    this.List.Remove(e)
-    return e.Value
-  }
-  return nil
-}
-func (this *Queue) Len() int {
-  defer this.Lock.Unlock()
-  this.Lock.Lock()
-  return this.List.Len()
-}
 func InitQueue() *Queue {
   q := new(Queue)
   var jobs []AsyncJob
@@ -284,10 +201,25 @@ func InitQueue() *Queue {
   }
   return q
 }
+var config_file *string
+func init() {
+  config_file = flag.String("config", "", "config file path")
+}
 
 func main() {
-  InitConfig(".", "config")
+  flag.Parse()
+  if *config_file == "" {
+    panic("config_file [" + *config_file + "] is not set") 
+  }
+  log.Println("config file is ", *config_file)
+  InitConfig(*config_file)
   e := echo.New()
+  e.HideBanner = true
+  e.Use(middleware.Recover())
+  e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+    AllowOrigins: []string{"*"},
+    AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, "Authorization"},
+  }))
   db, _ = DBConnect(viper.GetString("DBAddress"))
   q = InitQueue()
   db.AutoMigrate(&AsyncJob{})
@@ -295,5 +227,5 @@ func main() {
   e.POST("/process", Process)
   e.POST("/query", Query)
   //e.GET("/list", List)
-  e.Logger.Fatal(e.Start(":8082"))
+  e.Logger.Fatal(e.Start(viper.GetString("address")))
 }
