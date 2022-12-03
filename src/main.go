@@ -62,7 +62,7 @@ func Process(c echo.Context) error {
   response.Data = make(map[string]interface{})
   response.Data["job_id"] = job.JobId
   response.Data["queue_len"] = q.Len()
-  return c.JSON(http.StatusOK, response.ToString())
+  return c.JSON(http.StatusOK, response)
 }
 
 //func ProcessBackend(requestId string, now time.Time, job *AsyncJob, post_data *bytes.Buffer) {
