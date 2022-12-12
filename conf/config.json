@@ -1,6 +1,9 @@
 {
     "address": "0.0.0.0:8082",
     "requestURL": "http://localhost:9090/test",
-    "debug":"false",
-    "DBAddress": "root:123456@tcp(127.0.0.1:3306)/middleware?charset=utf8mb4&parseTime=True&loc=Local"
+    "debug": "false",
+    "DBAddress": "root:123456@tcp(127.0.0.1:3306)/middleware?charset=utf8mb4&parseTime=True&loc=Local",
+    "stablediffusion.timeout": "300s",
+    "stablediffusion.method": "POST",
+    "stablediffusion.content_type": "application/json"
 }

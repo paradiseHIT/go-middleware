@@ -1,6 +1,6 @@
 BUILD=go build
 DOCKER?=docker
-SOURCE_DIR=src
+SOURCE_DIR=app
 BIN_NAME=api-service
 REGISTRY?=registry.cn-beijing.aliyuncs.com/adebug-middlewares
 DOCKER_TAG?=0.0.1
@@ -10,8 +10,7 @@ TEMP_DIR_SERVER:=$(shell mktemp -d)
 #setup:
 #  go mod vendor
 build:
-	cd ${SOURCE_DIR}; CGO_ENABLED=0 GOARCH=amd64 GOOS=linux ${BUILD} -o ${BIN_NAME} *.go
-	cd ${SOURCE_DIR}; mv ${BIN_NAME} ../
+	CGO_ENABLED=0 GOARCH=amd64 GOOS=linux ${BUILD} -o ${BIN_NAME} *.go
 #release:
 #  cd ${SOURCE_DIR}; CGO_ENABLED=0 GOARCH=amd64 GOOS=linux ${BUILD} -o ${BIN_NAME} .
 #  cd ${SOURCE_DIR}; mv ${BIN_NAME} ${TEMP_DIR_SERVER}/appd
