@@ -154,9 +154,13 @@ func (s *Server) Process(c echo.Context) error {
 		Debug:         jobReq.Debug,
 		Prompt:        jobReq.Prompt,
 		RandomSeed:    jobReq.RandomSeed,
+		Steps:         jobReq.Steps,
 		Width:         jobReq.Width,
 		Height:        jobReq.Height,
 		GuidanceScale: jobReq.GuidanceScale,
+		NegPrompt:     jobReq.NegPrompt,
+		NIter:         jobReq.NIter,
+		Sampler:       jobReq.Sampler,
 	}
 	err = s.db.Create(&job).Error
 	if err != nil {
@@ -189,9 +193,13 @@ func (s *Server) ProcessBackend() {
 		job_detail["prompt"] = job.Prompt
 		job_detail["debug"] = job.Debug
 		job_detail["random_seed"] = job.RandomSeed
+		job_detail["steps"] = job.Steps
 		job_detail["width"] = job.Width
 		job_detail["height"] = job.Height
 		job_detail["guidance_scale"] = job.GuidanceScale
+		job_detail["negative_prompt"] = job.NegPrompt
+		job_detail["n_iter"] = job.NIter
+		job_detail["sampler"] = job.Sampler
 		post_data, err := json.Marshal(job_detail)
 		job.State = JOB_STATE_PROCESSING
 		job.UpdateTime = time.Now()
